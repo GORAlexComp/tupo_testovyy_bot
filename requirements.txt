@@ -4,3 +4,4 @@ requests
 pymysql
 cryptography
 python-dotenv
+flask
