@@ -1,2 +1,2 @@
-# tupo_testovyy_bot
+# Tupo Testovyy Bot
 Bot for Telegram
