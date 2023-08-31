@@ -1,0 +1,6 @@
+python-telegram-bot
+python-telegram-bot[webhooks]
+requests
+pymysql
+cryptography
+python-dotenv
