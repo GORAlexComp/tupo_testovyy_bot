@@ -11,6 +11,8 @@ from telegram.ext import (Application, CallbackQueryHandler, CommandHandler,
                           filters)
 from telegram.helpers import escape_markdown
 
+from web import keep_alive
+
 load_dotenv()
 
 logging.basicConfig(
@@ -239,6 +241,7 @@ def main() -> None:
 	application.add_handler(MessageHandler(filters.Regex("^(Поставить задачу 📓)$"), setTask))
 	application.add_handler(MessageHandler(filters.Regex("^(📝 Сменить Оффер)$"), changeOffer))
 
+	keep_alive()
 	application.run_polling(allowed_updates = Update.ALL_TYPES)
 
 if __name__ == "__main__":
