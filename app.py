@@ -52,7 +52,10 @@ main_menu = ReplyKeyboardMarkup([
 		KeyboardButton("🤩 Уникализатор"),
 	], [
 		KeyboardButton("Поставить задачу 📓"),
-		KeyboardButton("📝 Сменить Оффер"),
+		KeyboardButton("🔖 Офферы"),
+	],
+	[
+		KeyboardButton("👥 Пользователи")
 	]
 ], resize_keyboard = True)
 
@@ -68,19 +71,143 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 		parse_mode = "MarkdownV2",
 		)
 
-async def allOffers(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-	cursor = connection.cursor()
-	cursor.execute("SELECT * FROM offers")
-	rows = cursor.fetchall()
+async def mainMenu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+	text = "Что нужно сделать:"
 
 	await context.bot.sendMessage(
 		chat_id = update.effective_chat.id,
-		text = '*Все офферы*',
+		text = text,
 		reply_markup = main_menu,
 		parse_mode = "MarkdownV2",
 		)
 
-	if (rows):
+async def addCampaign(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+	text = "Страница добавления кампании"
+	menu = ReplyKeyboardMarkup([['⬅️ Главное меню']], resize_keyboard = True)
+
+	await context.bot.sendMessage(
+		chat_id = update.effective_chat.id,
+		text = text,
+		reply_markup = menu,
+		parse_mode = "MarkdownV2",
+		)
+
+async def actualApps(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+	text = "Страница актуальных приложений"
+	menu = ReplyKeyboardMarkup([['⬅️ Главное меню']], resize_keyboard = True)
+
+	await context.bot.sendMessage(
+		chat_id = update.effective_chat.id,
+		text = text,
+		reply_markup = menu,
+		parse_mode = "MarkdownV2",
+		)
+
+async def getNaming(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+	text = "Страница получения нэйминга"
+	menu = ReplyKeyboardMarkup([['⬅️ Главное меню']], resize_keyboard = True)
+
+	await context.bot.sendMessage(
+		chat_id = update.effective_chat.id,
+		text = text,
+		reply_markup = menu,
+		parse_mode = "MarkdownV2",
+		)
+
+async def camp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+	text = "Страница КАПС"
+	menu = ReplyKeyboardMarkup([['⬅️ Главное меню']], resize_keyboard = True)
+
+	await context.bot.sendMessage(
+		chat_id = update.effective_chat.id,
+		text = text,
+		reply_markup = menu,
+		parse_mode = "MarkdownV2",
+		)
+
+async def menuFarm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+	text = "Меню фарма"
+	menu = ReplyKeyboardMarkup([['⬅️ Главное меню']], resize_keyboard = True)
+
+	await context.bot.sendMessage(
+		chat_id = update.effective_chat.id,
+		text = text,
+		reply_markup = menu,
+		parse_mode = "MarkdownV2",
+		)
+
+async def infoBaing(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+	text = "Страница с инфо Баинга"
+	menu = ReplyKeyboardMarkup([['⬅️ Главное меню']], resize_keyboard = True)
+
+	await context.bot.sendMessage(
+		chat_id = update.effective_chat.id,
+		text = text,
+		reply_markup = menu,
+		parse_mode = "MarkdownV2",
+		)
+
+async def pushDeposit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+	text = "Страница Пуши о депозите"
+	menu = ReplyKeyboardMarkup([['⬅️ Главное меню']], resize_keyboard = True)
+
+	await context.bot.sendMessage(
+		chat_id = update.effective_chat.id,
+		text = text,
+		reply_markup = menu,
+		parse_mode = "MarkdownV2",
+		)
+
+async def uniqueizer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+	text = "Страница уникализатора"
+	menu = ReplyKeyboardMarkup([['⬅️ Главное меню']], resize_keyboard = True)
+
+	await context.bot.sendMessage(
+		chat_id = update.effective_chat.id,
+		text = text,
+		reply_markup = menu,
+		parse_mode = "MarkdownV2",
+		)
+
+async def setTask(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+	text = "Задачи"
+	menu = ReplyKeyboardMarkup([['⬅️ Главное меню']], resize_keyboard = True)
+
+	await context.bot.sendMessage(
+		chat_id = update.effective_chat.id,
+		text = text,
+		reply_markup = menu,
+		parse_mode = "MarkdownV2",
+		)
+
+async def menuOffers(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+	text = "Что делать с офферами"
+	menu = ReplyKeyboardMarkup([
+			[KeyboardButton("🗒 Все Офферы"), KeyboardButton("📝 Сменить Оффер")],
+			[KeyboardButton("⬅️ Главное меню")]
+		], resize_keyboard = True)
+
+	await context.bot.sendMessage(
+		chat_id = update.effective_chat.id,
+		text = text,
+		reply_markup = menu,
+		parse_mode = "MarkdownV2",
+		)
+
+async def allOffers(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+	menu = ReplyKeyboardMarkup([[KeyboardButton('🔖 Офферы'), KeyboardButton('⬅️ Главное меню')]], resize_keyboard = True)
+
+	try:
+		cursor = connection.cursor()
+		cursor.execute("SELECT * FROM offers")
+		rows = cursor.fetchall()
+
+		await context.bot.sendMessage(
+			chat_id = update.effective_chat.id,
+			text = '*Все офферы*',
+			parse_mode = "MarkdownV2",
+			)
+
 		for row in rows:
 			text = 'Оффер: *' + escape_markdown(str(row['name'])) + '*\n'  \
 					'Источник: *' + escape_markdown(str(row['source'])) + '*\n'  \
@@ -94,129 +221,21 @@ async def allOffers(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 			await context.bot.sendMessage(
 				chat_id = update.effective_chat.id,
 				text = text,
-				reply_markup = main_menu,
+				reply_markup = menu,
 				parse_mode = "Markdown",
 				)
-	else:
+	except pymysql.Error as e:
 		await context.bot.sendMessage(
 			chat_id = update.effective_chat.id,
 			text = escape_markdown('Error databese! Please, try again later!', 2),
+			# text = escape_markdown(str(e), 2), #error daatabase
 			reply_markup = main_menu,
 			parse_mode = "MarkdownV2",
 			)
 
-async def mainMenu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-	text = "Что нужно сделать:"
-
-	await context.bot.sendMessage(
-		chat_id = update.effective_chat.id,
-		text = text,
-		reply_markup = main_menu,
-		parse_mode = "MarkdownV2",
-		)
-
-async def addCampaign(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-	text = "Страница добавления кампании"
-	menu = ReplyKeyboardMarkup([['⬅️ Main menu']], resize_keyboard = True)
-
-	await context.bot.sendMessage(
-		chat_id = update.effective_chat.id,
-		text = text,
-		reply_markup = menu,
-		parse_mode = "MarkdownV2",
-		)
-
-async def actualApps(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-	text = "Страница актуальных приложений"
-	menu = ReplyKeyboardMarkup([['⬅️ Main menu']], resize_keyboard = True)
-
-	await context.bot.sendMessage(
-		chat_id = update.effective_chat.id,
-		text = text,
-		reply_markup = menu,
-		parse_mode = "MarkdownV2",
-		)
-
-async def getNaming(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-	text = "Страница получения нэйминга"
-	menu = ReplyKeyboardMarkup([['⬅️ Main menu']], resize_keyboard = True)
-
-	await context.bot.sendMessage(
-		chat_id = update.effective_chat.id,
-		text = text,
-		reply_markup = menu,
-		parse_mode = "MarkdownV2",
-		)
-
-async def camp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-	text = "Страница КАПС"
-	menu = ReplyKeyboardMarkup([['⬅️ Main menu']], resize_keyboard = True)
-
-	await context.bot.sendMessage(
-		chat_id = update.effective_chat.id,
-		text = text,
-		reply_markup = menu,
-		parse_mode = "MarkdownV2",
-		)
-
-async def menuFarm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-	text = "Меню фарма"
-	menu = ReplyKeyboardMarkup([['⬅️ Main menu']], resize_keyboard = True)
-
-	await context.bot.sendMessage(
-		chat_id = update.effective_chat.id,
-		text = text,
-		reply_markup = menu,
-		parse_mode = "MarkdownV2",
-		)
-
-async def infoBaing(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-	text = "Страница с инфо Баинга"
-	menu = ReplyKeyboardMarkup([['⬅️ Main menu']], resize_keyboard = True)
-
-	await context.bot.sendMessage(
-		chat_id = update.effective_chat.id,
-		text = text,
-		reply_markup = menu,
-		parse_mode = "MarkdownV2",
-		)
-
-async def pushDeposit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-	text = "Страница Пуши о депозите"
-	menu = ReplyKeyboardMarkup([['⬅️ Main menu']], resize_keyboard = True)
-
-	await context.bot.sendMessage(
-		chat_id = update.effective_chat.id,
-		text = text,
-		reply_markup = menu,
-		parse_mode = "MarkdownV2",
-		)
-
-async def uniqueizer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-	text = "Страница уникализатора"
-	menu = ReplyKeyboardMarkup([['⬅️ Main menu']], resize_keyboard = True)
-
-	await context.bot.sendMessage(
-		chat_id = update.effective_chat.id,
-		text = text,
-		reply_markup = menu,
-		parse_mode = "MarkdownV2",
-		)
-
-async def setTask(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-	text = "Задачи"
-	menu = ReplyKeyboardMarkup([['⬅️ Main menu']], resize_keyboard = True)
-
-	await context.bot.sendMessage(
-		chat_id = update.effective_chat.id,
-		text = text,
-		reply_markup = menu,
-		parse_mode = "MarkdownV2",
-		)
-
 async def changeOffer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 	text = "Страница смены оффера"
-	menu = ReplyKeyboardMarkup([['⬅️ Main menu']], resize_keyboard = True)
+	menu = ReplyKeyboardMarkup([[KeyboardButton('🔖 Офферы'), KeyboardButton('⬅️ Главное меню')]], resize_keyboard = True)
 
 	await context.bot.sendMessage(
 		chat_id = update.effective_chat.id,
@@ -224,12 +243,65 @@ async def changeOffer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 		reply_markup = menu,
 		parse_mode = "MarkdownV2",
 		)
+
+async def menuUsers(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+	text = "Что делать с офферами"
+	menu = ReplyKeyboardMarkup([
+			[KeyboardButton("🧾 Все пользователи"), KeyboardButton("⬅️ Главное меню")]
+		], resize_keyboard = True)
+
+	await context.bot.sendMessage(
+		chat_id = update.effective_chat.id,
+		text = text,
+		reply_markup = menu,
+		parse_mode = "MarkdownV2",
+		)
+
+async def allUsers(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+	menu = ReplyKeyboardMarkup([[KeyboardButton('👥 Пользователи'), KeyboardButton('⬅️ Главное меню')]], resize_keyboard = True)
+
+	try:
+		cursor = connection.cursor()
+		cursor.execute("SELECT * FROM users")
+		rows = cursor.fetchall()
+
+		await context.bot.sendMessage(
+			chat_id = update.effective_chat.id,
+			text = '*Все пользователи*',
+			parse_mode = "MarkdownV2",
+			)
+
+		for row in rows:
+			text = 'ID: *' + escape_markdown(str(row['id'])) + '*\n'  \
+					'Telegram ID: *' + escape_markdown(str(row['tg_id'])) + '*\n'  \
+					'Имя: *' + escape_markdown(str(row['username'])) + '*\n'  \
+					'Пароль: *' + escape_markdown(str(row['password'])) + '*\n'  \
+					'Роль: *' + escape_markdown(str(row['type'])) + '*\n'  \
+					'Заблокирован: *' + escape_markdown(str(row['locked'])) + '*\n'  \
+					'Забанен: *' + escape_markdown(str(row['baned'])) + '*\n'  \
+					'Зарегистрирован: *' + escape_markdown(str(row['create_timestamp'])) + '*\n'  \
+					'Последний вход: *' + escape_markdown(str(row['auth_timestamp'])) + '*'
+
+			await context.bot.sendMessage(
+				chat_id = update.effective_chat.id,
+				text = text,
+				reply_markup = menu,
+				parse_mode = "Markdown",
+				)
+	except pymysql.Error as e:
+		await context.bot.sendMessage(
+			chat_id = update.effective_chat.id,
+			text = escape_markdown('Error databese! Please, try again later!', 2),
+			# text = escape_markdown(str(e), 2), #error daatabase
+			reply_markup = menu,
+			parse_mode = "MarkdownV2",
+			)
 
 def main() -> None:
 	application.add_handler(CommandHandler("start", start))
-	application.add_handler(CommandHandler("alloffers", allOffers))
 
-	application.add_handler(MessageHandler(filters.Regex("^(⬅️ Main menu)$"), mainMenu))
+	application.add_handler(MessageHandler(filters.Regex("^(⬅️ Главное меню)$"), mainMenu))
+
 	application.add_handler(MessageHandler(filters.Regex("^(Добавить кампанию)$"), addCampaign))
 	application.add_handler(MessageHandler(filters.Regex("^(✅ Актуальные приложения)$"), actualApps))
 	application.add_handler(MessageHandler(filters.Regex("^(Получить NAMING 🗂)$"), getNaming))
@@ -239,7 +311,13 @@ def main() -> None:
 	application.add_handler(MessageHandler(filters.Regex("^(🔔 ВКЛ/ВЫКЛ PUSH о Депозите)$"), pushDeposit))
 	application.add_handler(MessageHandler(filters.Regex("^(🤩 Уникализатор)$"), uniqueizer))
 	application.add_handler(MessageHandler(filters.Regex("^(Поставить задачу 📓)$"), setTask))
+
+	application.add_handler(MessageHandler(filters.Regex("^(🔖 Офферы)$"), menuOffers))
+	application.add_handler(MessageHandler(filters.Regex("^(🗒 Все Офферы)$"), allOffers))
 	application.add_handler(MessageHandler(filters.Regex("^(📝 Сменить Оффер)$"), changeOffer))
+
+	application.add_handler(MessageHandler(filters.Regex("^(👥 Пользователи)$"), menuUsers))
+	application.add_handler(MessageHandler(filters.Regex("^(🧾 Все пользователи)$"), allUsers))
 
 	keep_alive()
 	application.run_polling(allowed_updates = Update.ALL_TYPES)
