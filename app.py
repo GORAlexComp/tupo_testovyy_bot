@@ -291,8 +291,8 @@ async def allUsers(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 	except pymysql.Error as e:
 		await context.bot.sendMessage(
 			chat_id = update.effective_chat.id,
-			text = escape_markdown('Error databese! Please, try again later!', 2),
-			# text = escape_markdown(str(e), 2), #error daatabase
+			# text = escape_markdown('Error databese! Please, try again later!', 2),
+			text = escape_markdown(str(e), 2), #error daatabase
 			reply_markup = menu,
 			parse_mode = "MarkdownV2",
 			)
