@@ -262,16 +262,16 @@ async def allUsers(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 					await context.bot.sendMessage(
 						chat_id = update.effective_chat.id,
-						text = '👤\nID: *' + escape_markdown(str(row['id'])) + '*\n'  \
-							'Telegram ID: *' + escape_markdown(str(row['tg_id'])) + '*\n'  \
-							'Имя: *' + escape_markdown(str(row['username'])) + '*\n'  \
-							'Пароль: *' + escape_markdown(str(row['password'])) + '*\n'  \
-							'Роль: *' + escape_markdown(str(row['type'])) + '*\n'  \
-							'Заблокирован: *' + escape_markdown(locked) + '*\n'  \
-							'Забанен: *' + escape_markdown(baned) + '*\n'  \
-							'Зарегистрирован: *' + escape_markdown(create_timestamp) + '*\n'  \
-							'Последний вход: *' + escape_markdown(auth_timestamp) + '*',
-						parse_mode = "Markdown",
+						text = '👤\nID: <b>' + str(row['id']) + '</b>\n'  \
+							'Telegram ID: <b>' + str(row['tg_id']) + '</b>\n'  \
+							'Имя: <b>' + str(row['username']) + '</b>\n'  \
+							'Пароль: <b>' + str(row['password']) + '</b>\n'  \
+							'Роль: <b>' + str(row['type']) + '</b>\n'  \
+							'Заблокирован: <b>' + str(locked) + '</b>\n'  \
+							'Забанен: <b>' + str(baned) + '</b>\n'  \
+							'Зарегистрирован: <b>' + str(create_timestamp) + '</b>\n'  \
+							'Последний вход: <b>' + str(auth_timestamp) + '</b>'
+						,parse_mode = "HTML",
 						)
 		except pymysql.Error as e:
 			await DBError(update, context, e)
