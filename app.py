@@ -1,6 +1,7 @@
 import logging, os, time, secrets, string, pymysql
 from datetime import datetime
 from dotenv import load_dotenv
+from web import keep_alive
 from telegram import (KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, Update)
 from telegram.ext import (Application, CommandHandler, ContextTypes, MessageHandler, filters)
 from telegram.helpers import escape_markdown
@@ -494,6 +495,7 @@ def main() -> None:
 	for button,func in mh:
 		application.add_handler(MessageHandler(filters.Regex("^(" + button + ")$"), func))
 
+	keep_alive()
 	application.run_polling(allowed_updates = Update.ALL_TYPES)
 
 if __name__ == "__main__":
