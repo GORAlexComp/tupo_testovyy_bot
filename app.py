@@ -64,6 +64,8 @@ main_menu = ReplyKeyboardMarkup(
 )
 back_to_mm = ReplyKeyboardMarkup([['⬅️ Главное меню']], resize_keyboard=True)
 
+tg_support = str(os.getenv('BOT_SUPPORT'))
+
 
 async def DBError(update, context, e):
     connection.close()
@@ -90,7 +92,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await context.bot.sendMessage(
                 chat_id=update.effective_chat.id,
                 text=(f"👋 [{username}]({tg_link}), добро пожаловать в *"
-                      f"{str(os.getenv('BOT_NAME'))}* BOT\\!"),
+                      f"{str(os.getenv('BOT_NAME'))}*\\!"),
                 reply_markup=main_menu,
                 parse_mode="MarkdownV2",
                 )
@@ -370,15 +372,25 @@ async def editUserStore(update: Update,
 
     elif (len(commandText) == 3):
         with connection.cursor() as cursor:
+            cursor.execute(f"SELECT * FROM users WHERE tg_id = \
+                           {update.effective_chat.id}")
+            rows = cursor.fetchall()
+            data = [rows[0]['username'], rows[0]['type']]
+
             cursor.execute("UPDATE users SET " + f"{str(commandText[1])}" + " \
                 = %s WHERE tg_id = %s", (str(commandText[2]),
                                          int(update.effective_chat.id)))
 
+        if (commandText[1] == "username"):
+            type = f"*имя* с *{data[0]}* на *{commandText[1]}*!"
+        elif (commandText[1] == "password"):
+            type = "*пароль*!"
+        elif (commandText[1] == "type"):
+            type = f"*тип* с *{data[1]}* на *{commandText[2]}*!"
+
         await context.bot.sendMessage(
             chat_id=update.effective_chat.id,
-            text=("*✏️ Редактирование пользователя: *\n\n"
-                  f"Тип: {commandText[1]}\n"
-                  f"Новое значение: {commandText[2]}"),
+            text=(f"*✅ Вы успешно изменили {type}"),
             parse_mode="Markdown",
             )
 
@@ -424,8 +436,8 @@ async def login(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             await context.bot.sendMessage(
                                 chat_id=update.effective_chat.id,
                                 text=("*⛔️ Неверный пароль!*\nЕсли Вы забыли "
-                                      "пароль или не устанавливали его, "
-                                      "обратитесь за помощью к @goralex97!"),
+                                      "пароль, обратитесь за помощью "
+                                      "к {tg_support}!"),
                                 parse_mode="Markdown",
                             )
                     else:
@@ -433,15 +445,15 @@ async def login(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             chat_id=update.effective_chat.id,
                             text=("*❌ Не указан пароль!*\nКомманда должна "
                                   "быть /login _ВашПароль_.\nЕсли Вы забыли "
-                                  "пароль или не устанавливали его, "
-                                  "обратитесь за помощью к @goralex97!"),
+                                  f"пароль, обратитесь за помощью к "
+                                  f"{tg_support}!"),
                             parse_mode="Markdown",
                             )
                 else:
                     await context.bot.sendMessage(
                         chat_id=update.effective_chat.id,
                         text=("*⛔️ Вы не зарегистрированы!*\nОбратитесь к "
-                              "@goralex97 за помощью!"),
+                              f"{tg_support} за помощью!"),
                         parse_mode="Markdown",
                         )
     except pymysql.Error as e:
@@ -472,9 +484,8 @@ async def logout(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await context.bot.sendMessage(
                     chat_id=update.effective_chat.id,
                     text=("*✅ Нужно авторизоваться!*\nВведите комманду /login "
-                          "_ВашПароль_.\nЕсли Вы забыли пароль или не "
-                          "устанавливали его, обратитесь за помощью к "
-                          "@goralex97!"),
+                          "_ВашПароль_.\nЕсли Вы забыли пароль, обратитесь за "
+                          f"помощью к {tg_support}!"),
                     parse_mode="Markdown",
                     )
     except pymysql.Error as e:
@@ -496,9 +507,8 @@ async def checkLogin(update: Update,
                     await context.bot.sendMessage(
                         chat_id=update.effective_chat.id,
                         text=("*✅ Нужно авторизоваться!*\nВведите комманду "
-                              "/login _ВашПароль_.\nЕсли Вы забыли пароль или "
-                              "не устанавливали его, обратитесь за помощью к "
-                              "@goralex97!"),
+                              "/login _ВашПароль_.\nЕсли Вы забыли пароль, "
+                              f"обратитесь за помощью к {tg_support}!"),
                         reply_markup=ReplyKeyboardRemove(True),
                         parse_mode="Markdown",
                         )
@@ -560,8 +570,23 @@ async def createUser(update: Update,
 async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.sendMessage(
         chat_id=update.effective_chat.id,
-        text=("*📘 Помощь!*\n\n Если Вы забыли пароль или не устанавливали "
-              "его, обратитесь за помощью к @goralex97!"),
+        text=("*📘 Помощь!*\n\n"
+              "📍 /login - команда для авторизации в боте\n"
+              "  `Например:` /login *password*\n\n"
+
+              "📍 /edituser - команда для изменения своих данных\n"
+              "  `Параметры:` \n"
+              "    *тип* - может быть _username_, _password_ или _type_;\n"
+              "    *новоеЗначение* - должно содержать строчный тип данных.\n"
+              "  `Например:` /edituser *username* *НовоеИмя*\n\n"
+
+              "📍 /admins - команда для вывода списка админов\n\n"
+
+              "📍 /logout - команда для завершения сессии в боте\n\n"
+
+              "📍 /help - команда для вывода этого сообщения\n\n"
+
+              f"Если Вы забыли пароль, обратитесь за помощью к {tg_support}!"),
         reply_markup=ReplyKeyboardRemove(True),
         parse_mode="Markdown",
         )
