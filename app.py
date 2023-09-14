@@ -229,24 +229,33 @@ async def allOffers(update: Update, context: ContextTypes.DEFAULT_TYPE):
             cursor.execute("SELECT * FROM offers")
             rows = cursor.fetchall()
 
-            for row in rows:
-                count = escape_markdown(str(row['count']))
-                advertiser = escape_markdown(str(row['advertiser']),
-                                             2).replace('\\', '')
+            if (len(rows) >= 1):
+                for row in rows:
+                    name = escape_markdown(str(row['name']))
+                    source = escape_markdown(str(row['source']))
+                    count = escape_markdown(str(row['count']))
+                    advertiser = escape_markdown(str(row['advertiser']),
+                                                 2).replace('\\', '')
 
+                    await context.bot.sendMessage(
+                        chat_id=update.effective_chat.id,
+                        text=(
+                            f"🔍\nОффер: *{name}*\n"
+                            f"Источник: *{source}*\n"
+                            f"Тип CAP: *{escape_markdown(str(row['type']))}*\n"
+                            f"Колличество: *{count}*\n"
+                            f"ID: *{escape_markdown(str(row['offer_id']))}*\n"
+                            f"Рекламодатель: *{advertiser}*\n"
+                            f"GEO: *{escape_markdown(str(row['geo']))}*\n"
+                            f"Link: *{escape_markdown(str(row['link']))}*"
+                        ), parse_mode="Markdown",
+                        )
+            else:
                 await context.bot.sendMessage(
                     chat_id=update.effective_chat.id,
-                    text=(
-                        f"🔍\nОффер: *{escape_markdown(str(row['name']))}*\n"
-                        f"Источник: *{escape_markdown(str(row['source']))}*\n"
-                        f"Тип CAP: *{escape_markdown(str(row['type']))}*\n"
-                        f"Колличество: *{count}*\n"
-                        f"ID: *{escape_markdown(str(row['offer_id']))}*\n"
-                        f"Рекламодатель: *{advertiser}*\n"
-                        f"GEO: *{escape_markdown(str(row['geo']))}*\n"
-                        f"Link: *{escape_markdown(str(row['link']))}*"
-                    ), parse_mode="Markdown",
+                    text="❌ Офферов не найдено!", parse_mode="Markdown",
                     )
+
         except pymysql.Error as e:
             await DBError(update, context, e)
 
@@ -291,46 +300,54 @@ async def allUsers(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     parse_mode="Markdown",
                     )
 
-                cursor.execute("SELECT * FROM users")
+                cursor.execute("SELECT * FROM users WHERE type NOT IN"
+                               " (%s, %s)", ("mainadmin", "admin"))
                 rows = cursor.fetchall()
 
-                for row in rows:
-                    if (row['locked'] == 1):
-                        locked = "🟢"
-                    else:
-                        locked = "🔴"
+                if (len(rows) >= 1):
+                    for row in rows:
+                        if (row['locked'] == 1):
+                            locked = "🟢"
+                        else:
+                            locked = "🔴"
 
-                    if (row['baned'] == 1):
-                        baned = "🟢"
-                    else:
-                        baned = "🔴"
+                        if (row['baned'] == 1):
+                            baned = "🟢"
+                        else:
+                            baned = "🔴"
 
-                    if (row['create_timestamp'] == 0):
-                        create_ts = "Никогда"
-                    else:
-                        create_ts = datetime.fromtimestamp(
-                            row['create_timestamp']).strftime(
-                                "%d/%m/%Y, %H:%M:%S")
+                        if (row['create_timestamp'] == 0):
+                            create_ts = "Никогда"
+                        else:
+                            create_ts = datetime.fromtimestamp(
+                                row['create_timestamp']).strftime(
+                                    "%d/%m/%Y, %H:%M:%S")
 
-                    if (row['auth_timestamp'] == 0):
-                        auth_ts = "Никогда"
-                    else:
-                        auth_ts = datetime.fromtimestamp(
-                            row['auth_timestamp']).strftime(
-                                "%d/%m/%Y, %H:%M:%S")
+                        if (row['auth_timestamp'] == 0):
+                            auth_ts = "Никогда"
+                        else:
+                            auth_ts = datetime.fromtimestamp(
+                                row['auth_timestamp']).strftime(
+                                    "%d/%m/%Y, %H:%M:%S")
 
+                        await context.bot.sendMessage(
+                            chat_id=update.effective_chat.id,
+                            text=(f"👤\nID: <b>{str(row['id'])}</b>\n"
+                                  f"Telegram ID: <b>{str(row['tg_id'])}</b>\n"
+                                  f"Имя: <b>{str(row['username'])}</b>\n"
+                                  f"Пароль: <b>{str(row['password'])}</b>\n"
+                                  f"Роль: <b>{str(row['type'])}</b>\n"
+                                  f"Заблокирован: <b>{str(locked)}</b>\n"
+                                  f"Забанен: <b>{str(baned)}</b>\n"
+                                  f"Зарегистрирован: <b>{str(create_ts)}</b>\n"
+                                  f"Последний вход: <b>{str(auth_ts)} </b>"
+                                  ), parse_mode="HTML",
+                            )
+                else:
                     await context.bot.sendMessage(
                         chat_id=update.effective_chat.id,
-                        text=(f"👤\nID: <b>' {str(row['id'])} </b>\n"
-                              f"Telegram ID: <b> {str(row['tg_id'])} </b>\n"
-                              f"Имя: <b> {str(row['username'])} </b>\n"
-                              f"Пароль: <b> {str(row['password'])} </b>\n"
-                              f"Роль: <b> {str(row['type'])} </b>\n"
-                              f"Заблокирован: <b> {str(locked)} </b>\n"
-                              f"Забанен: <b> {str(baned)} </b>\n"
-                              f"Зарегистрирован: <b> {str(create_ts)} </b>\n"
-                              f"Последний вход: <b> {str(auth_ts)} </b>"
-                              ), parse_mode="HTML",
+                        text='*❌ Пользователи не найдены!',
+                        parse_mode="Markdown",
                         )
         except pymysql.Error as e:
             await DBError(update, context, e)
@@ -381,18 +398,22 @@ async def editUserStore(update: Update,
                 = %s WHERE tg_id = %s", (str(commandText[2]),
                                          int(update.effective_chat.id)))
 
-        if (commandText[1] == "username"):
-            type = f"*имя* с *{data[0]}* на *{commandText[1]}*!"
-        elif (commandText[1] == "password"):
-            type = "*пароль*!"
-        elif (commandText[1] == "type"):
-            type = f"*тип* с *{data[1]}* на *{commandText[2]}*!"
+            if (commandText[1] == "username"):
+                text = ("✅ Вы успешно изменили *имя* с *"
+                        f"{data[0]}* на *{commandText[2]}*!")
+            elif (commandText[1] == "password"):
+                text = "✅ Вы успешно изменили *пароль*!"
+            elif (commandText[1] == "type"):
+                text = ("✅ Вы успешно изменили *тип* с *"
+                        f"{data[1]}* на *{commandText[2]}*!")
+            else:
+                text = "❌ Не удалось изменить данные пользователя!"
 
-        await context.bot.sendMessage(
-            chat_id=update.effective_chat.id,
-            text=(f"*✅ Вы успешно изменили {type}"),
-            parse_mode="Markdown",
-            )
+            await context.bot.sendMessage(
+                chat_id=update.effective_chat.id,
+                text=text,
+                parse_mode="Markdown",
+                )
 
 
 async def login(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -568,34 +589,101 @@ async def createUser(update: Update,
 
 
 async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await context.bot.sendMessage(
-        chat_id=update.effective_chat.id,
-        text=("*📘 Помощь!*\n\n"
-              "📍 /login - команда для авторизации в боте\n"
-              "  `Например:` /login *password*\n\n"
+    if (await checkLogin(update, context)):
+        await context.bot.sendMessage(
+            chat_id=update.effective_chat.id,
+            text=(
+                "*📘 Помощь!*\n\n"
+                "📍 /login - команда для авторизации в боте\n"
+                "  `Например:` /login *password*\n\n"
 
-              "📍 /edituser - команда для изменения своих данных\n"
-              "  `Параметры:` \n"
-              "    *тип* - может быть _username_, _password_ или _type_;\n"
-              "    *новоеЗначение* - должно содержать строчный тип данных.\n"
-              "  `Например:` /edituser *username* *НовоеИмя*\n\n"
+                "📍 /edituser - команда для изменения своих данных\n"
+                "  `Параметры:` \n"
+                "    *тип* - может быть _username_, _password_ или _type_;\n"
+                "    *новоеЗначение* - должно содержать строчный тип данных.\n"
+                "  `Например:` /edituser *username* *НовоеИмя*\n\n"
 
-              "📍 /admins - команда для вывода списка админов\n\n"
+                "📍 /admins - команда для вывода списка админов\n\n"
+                "📍 /logout - команда для завершения сессии в боте\n\n"
+                "📍 /help - команда для вывода этого сообщения\n\n"
 
-              "📍 /logout - команда для завершения сессии в боте\n\n"
+                "Если Вы забыли пароль, обратитесь за помощью к "
+                f"{tg_support}!"),
+            reply_markup=ReplyKeyboardRemove(True),
+            parse_mode="Markdown",
+            )
 
-              "📍 /help - команда для вывода этого сообщения\n\n"
 
-              f"Если Вы забыли пароль, обратитесь за помощью к {tg_support}!"),
-        reply_markup=ReplyKeyboardRemove(True),
-        parse_mode="Markdown",
-        )
+async def admins(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if (await checkLogin(update, context)):
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT * FROM users WHERE type IN (%s, %s)",
+                           ("mainadmin", "admin"))
+            rows = cursor.fetchall()
+
+            if (len(rows) >= 1):
+                await context.bot.sendMessage(
+                    chat_id=update.effective_chat.id,
+                    text="*👑 Админы!*\n\n",
+                    parse_mode="Markdown",
+                    )
+
+                for row in rows:
+                    if (row['type'] == 'mainadmin'):
+                        type = "Главный админ"
+                    elif (row['type'] == 'admin'):
+                        type = "Админ"
+
+                    if (row['locked'] == 1):
+                        locked = "🟢"
+                    else:
+                        locked = "🔴"
+
+                    if (row['baned'] == 1):
+                        baned = "🟢"
+                    else:
+                        baned = "🔴"
+
+                    if (row['create_timestamp'] == 0):
+                        create_ts = "Никогда"
+                    else:
+                        create_ts = datetime.fromtimestamp(
+                            row['create_timestamp']).strftime(
+                                "%d/%m/%Y, %H:%M:%S")
+
+                    if (row['auth_timestamp'] == 0):
+                        auth_ts = "Никогда"
+                    else:
+                        auth_ts = datetime.fromtimestamp(
+                            row['auth_timestamp']).strftime(
+                                "%d/%m/%Y, %H:%M:%S")
+
+                    await context.bot.sendMessage(
+                        chat_id=update.effective_chat.id,
+                        text=(f"👤\nID: <b>{str(row['id'])}</b>\n"
+                              f"Telegram ID: <b>{str(row['tg_id'])}</b>\n"
+                              f"Имя: <b>{str(row['username'])}</b>\n"
+                              f"Роль: <b>{str(type)}</b>\n"
+                              f"Заблокирован: <b>{str(locked)}</b>\n"
+                              f"Забанен: <b>{str(baned)}</b>\n"
+                              f"Зарегистрирован: <b>{str(create_ts)}</b>\n"
+                              f"Последний вход: <b>{str(auth_ts)}</b>"
+                              ), parse_mode="HTML",
+                        )
+            else:
+                await context.bot.sendMessage(
+                    chat_id=update.effective_chat.id,
+                    text=("*👑 Админы!*\n\n"
+                          " ❌ Администраторов не найдено!"),
+                    parse_mode="Markdown",
+                    )
 
 
 def main():
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help))
     application.add_handler(CommandHandler("edituser", editUser))
+    application.add_handler(CommandHandler("admins", admins))
     application.add_handler(CommandHandler("login", login))
     application.add_handler(CommandHandler("logout", logout))
 
