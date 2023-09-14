@@ -1,4 +1,5 @@
 .temp/
+TODO/
 
 *.code-workspace
 *.vscode
@@ -6,3 +7,4 @@ test.py
 *.todo
 .env
 __pycache__
+venv
