@@ -5,7 +5,7 @@ import string
 import time
 from datetime import datetime
 
-import pymysql
+import pymysql.cursors
 from dotenv import load_dotenv
 from telegram import (KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove,
                       Update)
@@ -24,22 +24,20 @@ logging.basicConfig(
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
-application = Application.builder().token(str(os.getenv('BOT_TOKEN'))).build()
+bot = Application.builder().token(str(os.getenv('BOT_TOKEN'))).build()
 
 timeout = 10
 connection = pymysql.connect(
-    charset="utf8mb4",
-    cursorclass=pymysql.cursors.DictCursor,
     db=os.getenv('DB_BASE'),
     host=os.getenv('DB_HOST'),
     port=int(os.getenv('DB_PORT')),
     user=os.getenv('DB_USER'),
     password=os.getenv('DB_PASSWORD'),
-    connect_timeout=int(os.getenv('DB_TIMEOUT')),
-    read_timeout=int(os.getenv('DB_TIMEOUT')),
-    write_timeout=int(os.getenv('DB_TIMEOUT')),
+    cursorclass=pymysql.cursors.DictCursor,
+    charset="utf8mb4",
     autocommit=True
 )
+cursor = connection.cursor()
 
 main_menu = ReplyKeyboardMarkup(
     [[
@@ -68,34 +66,37 @@ tg_support = str(os.getenv('BOT_SUPPORT'))
 
 
 async def DBError(update, context, e):
-    connection.close()
     await context.bot.sendMessage(
         chat_id=update.effective_chat.id,
-        text=escape_markdown(str(e), 2),
+        text=str(e)
         )
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if (await checkLogin(update, context)):
-        with connection.cursor() as cursor:
-            cursor.execute(f"SELECT * FROM users WHERE tg_id = \
-                           {update.effective_chat.id}")
-            rows = cursor.fetchall()
+        try:
+            cursor.execute(("SELECT * FROM users WHERE tg_id = "
+                            f"{update.effective_chat.id}"))
+            user = cursor.fetchone()
 
-            if (rows[0]['username'] != ''):
-                username = escape_markdown(rows[0]['username'], 2)
+            if (user['username'] != ''):
+                username = escape_markdown(user['username'])
             else:
-                username = escape_markdown(update.effective_user.full_name, 2)
+                username = escape_markdown(update.effective_user.full_name)
 
             tg_link = "tg://user?id=" + str(update.effective_user.id)
 
             await context.bot.sendMessage(
                 chat_id=update.effective_chat.id,
                 text=(f"👋 [{username}]({tg_link}), добро пожаловать в *"
-                      f"{str(os.getenv('BOT_NAME'))}*\\!"),
+                      f"{str(os.getenv('BOT_NAME'))}*!"),
                 reply_markup=main_menu,
-                parse_mode="MarkdownV2",
+                parse_mode="Markdown",
                 )
+
+        except pymysql.Error as e:
+            await DBError(update, context, e)
+            return False
 
 
 async def mainMenu(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -225,16 +226,17 @@ async def allOffers(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 parse_mode="Markdown",
                 )
 
-            cursor = connection.cursor()
             cursor.execute("SELECT * FROM offers")
-            rows = cursor.fetchall()
+            offers = cursor.fetchall()
 
-            if (len(rows) >= 1):
-                for row in rows:
-                    name = escape_markdown(str(row['name']))
-                    source = escape_markdown(str(row['source']))
-                    count = escape_markdown(str(row['count']))
-                    advertiser = escape_markdown(str(row['advertiser']),
+            if (len(offers) >= 1):
+                for offer in offers:
+                    name = escape_markdown(str(offer['name']))
+                    source = escape_markdown(str(offer['source']))
+                    type_cap = escape_markdown(str(offer['type']))
+                    count = escape_markdown(str(offer['count']))
+                    offer_id = escape_markdown(str(offer['offer_id']))
+                    advertiser = escape_markdown(str(offer['advertiser']),
                                                  2).replace('\\', '')
 
                     await context.bot.sendMessage(
@@ -242,12 +244,12 @@ async def allOffers(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         text=(
                             f"🔍\nОффер: *{name}*\n"
                             f"Источник: *{source}*\n"
-                            f"Тип CAP: *{escape_markdown(str(row['type']))}*\n"
+                            f"Тип CAP: *{type_cap}*\n"
                             f"Колличество: *{count}*\n"
-                            f"ID: *{escape_markdown(str(row['offer_id']))}*\n"
+                            f"ID: *{offer_id}*\n"
                             f"Рекламодатель: *{advertiser}*\n"
-                            f"GEO: *{escape_markdown(str(row['geo']))}*\n"
-                            f"Link: *{escape_markdown(str(row['link']))}*"
+                            f"GEO: *{escape_markdown(str(offer['geo']))}*\n"
+                            f"Link: *{escape_markdown(str(offer['link']))}*"
                         ), parse_mode="Markdown",
                         )
             else:
@@ -289,66 +291,67 @@ async def menuUsers(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def allUsers(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if (await checkLogin(update, context)):
         try:
-            with connection.cursor() as cursor:
+            await context.bot.sendMessage(
+                chat_id=update.effective_chat.id,
+                text='*🧾 Все пользователи*',
+                reply_markup=ReplyKeyboardMarkup([
+                    [KeyboardButton('👥 Пользователи'),
+                        KeyboardButton('⬅️ Главное меню')]
+                ], resize_keyboard=True),
+                parse_mode="Markdown",
+                )
+
+            cursor.execute((
+                "SELECT * FROM users WHERE type NOT IN "
+                "('mainadmin', 'admin')"))
+            users = cursor.fetchall()
+
+            if (len(users) >= 1):
+                for user in users:
+                    if (user['locked'] == 1):
+                        locked = "🟢"
+                    else:
+                        locked = "🔴"
+
+                    if (user['baned'] == 1):
+                        baned = "🟢"
+                    else:
+                        baned = "🔴"
+
+                    if (user['create_timestamp'] == 0):
+                        create_ts = "Никогда"
+                    else:
+                        create_ts = datetime.fromtimestamp(
+                            user['create_timestamp']).strftime(
+                                "%d/%m/%Y, %H:%M:%S")
+
+                    if (user['auth_timestamp'] == 0):
+                        auth_ts = "Никогда"
+                    else:
+                        auth_ts = datetime.fromtimestamp(
+                            user['auth_timestamp']).strftime(
+                                "%d/%m/%Y, %H:%M:%S")
+
+                    await context.bot.sendMessage(
+                        chat_id=update.effective_chat.id,
+                        text=(f"👤\nID: <b>{str(user['id'])}</b>\n"
+                              f"Telegram ID: <b>{str(user['tg_id'])}</b>\n"
+                              f"Имя: <b>{str(user['username'])}</b>\n"
+                              f"Пароль: <b>{str(user['password'])}</b>\n"
+                              f"Роль: <b>{str(user['type'])}</b>\n"
+                              f"Заблокирован: <b>{str(locked)}</b>\n"
+                              f"Забанен: <b>{str(baned)}</b>\n"
+                              f"Зарегистрирован: <b>{str(create_ts)}</b>\n"
+                              f"Последний вход: <b>{str(auth_ts)} </b>"
+                              ), parse_mode="HTML",
+                        )
+            else:
                 await context.bot.sendMessage(
                     chat_id=update.effective_chat.id,
-                    text='*🧾 Все пользователи*',
-                    reply_markup=ReplyKeyboardMarkup([
-                        [KeyboardButton('👥 Пользователи'),
-                         KeyboardButton('⬅️ Главное меню')]
-                    ], resize_keyboard=True),
+                    text='*❌ Пользователи не найдены!',
                     parse_mode="Markdown",
                     )
 
-                cursor.execute("SELECT * FROM users WHERE type NOT IN"
-                               " (%s, %s)", ("mainadmin", "admin"))
-                rows = cursor.fetchall()
-
-                if (len(rows) >= 1):
-                    for row in rows:
-                        if (row['locked'] == 1):
-                            locked = "🟢"
-                        else:
-                            locked = "🔴"
-
-                        if (row['baned'] == 1):
-                            baned = "🟢"
-                        else:
-                            baned = "🔴"
-
-                        if (row['create_timestamp'] == 0):
-                            create_ts = "Никогда"
-                        else:
-                            create_ts = datetime.fromtimestamp(
-                                row['create_timestamp']).strftime(
-                                    "%d/%m/%Y, %H:%M:%S")
-
-                        if (row['auth_timestamp'] == 0):
-                            auth_ts = "Никогда"
-                        else:
-                            auth_ts = datetime.fromtimestamp(
-                                row['auth_timestamp']).strftime(
-                                    "%d/%m/%Y, %H:%M:%S")
-
-                        await context.bot.sendMessage(
-                            chat_id=update.effective_chat.id,
-                            text=(f"👤\nID: <b>{str(row['id'])}</b>\n"
-                                  f"Telegram ID: <b>{str(row['tg_id'])}</b>\n"
-                                  f"Имя: <b>{str(row['username'])}</b>\n"
-                                  f"Пароль: <b>{str(row['password'])}</b>\n"
-                                  f"Роль: <b>{str(row['type'])}</b>\n"
-                                  f"Заблокирован: <b>{str(locked)}</b>\n"
-                                  f"Забанен: <b>{str(baned)}</b>\n"
-                                  f"Зарегистрирован: <b>{str(create_ts)}</b>\n"
-                                  f"Последний вход: <b>{str(auth_ts)} </b>"
-                                  ), parse_mode="HTML",
-                            )
-                else:
-                    await context.bot.sendMessage(
-                        chat_id=update.effective_chat.id,
-                        text='*❌ Пользователи не найдены!',
-                        parse_mode="Markdown",
-                        )
         except pymysql.Error as e:
             await DBError(update, context, e)
 
@@ -358,45 +361,48 @@ async def editUser(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             commandText = update.effective_message.text.split(' ')
             await editUserStore(update, context, commandText)
-        except Exception as e:
+
+        except pymysql.Error as e:
             await DBError(update, context, e)
 
 
 async def editUserStore(update: Update,
                         context: ContextTypes.DEFAULT_TYPE,
                         commandText):
-    if (len(commandText) == 1):
-        await context.bot.sendMessage(
-            chat_id=update.effective_chat.id,
-            text='*❌ Ошибка 1:* Нужно указать _TYPE_',
-            parse_mode="Markdown",
-            )
-    elif (len(commandText) == 2):
-        types = ['username', 'password', 'type']
-        if (commandText[1] in types):
+    try:
+        if (len(commandText) == 1):
             await context.bot.sendMessage(
                 chat_id=update.effective_chat.id,
-                text='*❌ Ошибка 2:* Нужно указать _NEW VALUE_',
+                text='*❌ Ошибка 1:* Нужно указать _TYPE_',
                 parse_mode="Markdown",
                 )
-        else:
-            await context.bot.sendMessage(
-                chat_id=update.effective_chat.id,
-                text=(f"*❌ Ошибка 1.1: * _TYPE_ [{', '.join(types)}] не "
-                      "найден в базе!"),
-                parse_mode="Markdown",
-                )
+        elif (len(commandText) == 2):
+            types = ['username', 'password', 'type']
+            if (commandText[1] in types):
+                await context.bot.sendMessage(
+                    chat_id=update.effective_chat.id,
+                    text='*❌ Ошибка 2:* Нужно указать _NEW VALUE_',
+                    parse_mode="Markdown",
+                    )
+            else:
+                await context.bot.sendMessage(
+                    chat_id=update.effective_chat.id,
+                    text=(f"*❌ Ошибка 1.1: * _TYPE_ [{', '.join(types)}] не "
+                          "найден в базе!"),
+                    parse_mode="Markdown",
+                    )
 
-    elif (len(commandText) == 3):
-        with connection.cursor() as cursor:
-            cursor.execute(f"SELECT * FROM users WHERE tg_id = \
-                           {update.effective_chat.id}")
-            rows = cursor.fetchall()
-            data = [rows[0]['username'], rows[0]['type']]
+        elif (len(commandText) == 3):
+            cursor.execute(("SELECT * FROM users WHERE tg_id = "
+                            f"{update.effective_chat.id}"))
+            rows = cursor.fetchone()
+            data = [rows['username'], rows['type']]
 
-            cursor.execute("UPDATE users SET " + f"{str(commandText[1])}" + " \
-                = %s WHERE tg_id = %s", (str(commandText[2]),
-                                         int(update.effective_chat.id)))
+            sql = ((f"UPDATE users SET {commandText[1]} = "
+                    f"'{commandText[2]}' WHERE tg_id = "
+                    f"{update.effective_chat.id}"))
+
+            cursor.execute(sql)
 
             if (commandText[1] == "username"):
                 text = ("✅ Вы успешно изменили *имя* с *"
@@ -415,100 +421,102 @@ async def editUserStore(update: Update,
                 parse_mode="Markdown",
                 )
 
+    except pymysql.Error as e:
+        await DBError(update, context, e)
+
 
 async def login(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        with connection.cursor() as cursor:
-            cursor.execute(f"SELECT * FROM users WHERE tg_id = \
-                           {update.effective_chat.id}")
-            rows = cursor.fetchall()
+        cursor.execute(("SELECT * FROM users WHERE tg_id = "
+                        f"{update.effective_chat.id}"))
+        user = cursor.fetchone()
 
-            if (rows[0]['login_now'] == 1):
-                await context.bot.sendMessage(
-                    chat_id=update.effective_chat.id,
-                    text=("*✅ Вы уже авторизованы!*\nИспользуйте комманду "
-                          "*/start* что бы начать."),
-                    parse_mode="Markdown",
-                    )
-            else:
-                if (len(rows) >= 1):
-                    commandText = update.effective_message.text.split(' ')
-                    if (len(commandText) >= 2):
-                        if (commandText[1] == rows[0]['password']):
-                            cursor.execute(f"UPDATE users SET login_now = 1, \
-                                auth_timestamp = {time.time()} WHERE tg_id = \
-                                    {update.effective_chat.id}")
+        if (user['login_now'] == 1):
+            await context.bot.sendMessage(
+                chat_id=update.effective_chat.id,
+                text=("*✅ Вы уже авторизованы!*\nИспользуйте комманду "
+                      "*/start* что бы начать."),
+                parse_mode="Markdown",
+                )
+        else:
+            if (user):
+                commandText = update.effective_message.text.split(' ')
+                if (len(commandText) >= 2):
+                    if (commandText[1] == user['password']):
+                        cursor.execute(("UPDATE users SET login_now = "
+                                        "1, auth_timestamp = "
+                                        f"{time.time()} WHERE tg_id = "
+                                        f"{update.effective_chat.id}"))
 
-                            await context.bot.deleteMessage(
-                                chat_id=update.effective_chat.id,
-                                message_id=update.message._id_attrs[0],
-                                )
-
-                            await context.bot.sendMessage(
-                                chat_id=update.effective_chat.id,
-                                text="*✅ Вы успешно авторизовались!*",
-                                reply_markup=main_menu,
-                                parse_mode="Markdown",
-                                )
-
-                            await start(update, context)
-
-                        else:
-                            await context.bot.sendMessage(
-                                chat_id=update.effective_chat.id,
-                                text=("*⛔️ Неверный пароль!*\nЕсли Вы забыли "
-                                      "пароль, обратитесь за помощью "
-                                      "к {tg_support}!"),
-                                parse_mode="Markdown",
+                        await context.bot.deleteMessage(
+                            chat_id=update.effective_chat.id,
+                            message_id=update.message._id_attrs[0],
                             )
+
+                        await context.bot.sendMessage(
+                            chat_id=update.effective_chat.id,
+                            text="*✅ Вы успешно авторизовались!*",
+                            reply_markup=main_menu,
+                            parse_mode="Markdown",
+                            )
+
+                        await start(update, context)
+
                     else:
                         await context.bot.sendMessage(
                             chat_id=update.effective_chat.id,
-                            text=("*❌ Не указан пароль!*\nКомманда должна "
-                                  "быть /login _ВашПароль_.\nЕсли Вы забыли "
-                                  f"пароль, обратитесь за помощью к "
-                                  f"{tg_support}!"),
+                            text=("*⛔️ Неверный пароль!*\nЕсли Вы забыли "
+                                  "пароль, обратитесь за помощью "
+                                  "к {tg_support}!"),
                             parse_mode="Markdown",
-                            )
+                        )
                 else:
                     await context.bot.sendMessage(
                         chat_id=update.effective_chat.id,
-                        text=("*⛔️ Вы не зарегистрированы!*\nОбратитесь к "
-                              f"{tg_support} за помощью!"),
+                        text=("*❌ Не указан пароль!*\nКомманда должна "
+                              "быть /login _ВашПароль_.\nЕсли Вы забыли "
+                              f"пароль, обратитесь за помощью к "
+                              f"{tg_support}!"),
                         parse_mode="Markdown",
                         )
+            else:
+                await context.bot.sendMessage(
+                    chat_id=update.effective_chat.id,
+                    text=("*⛔️ Вы не зарегистрированы!*\nОбратитесь к "
+                          f"{tg_support} за помощью!"),
+                    parse_mode="Markdown",
+                    )
+
     except pymysql.Error as e:
         await DBError(update, context, e)
 
 
 async def logout(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        with connection.cursor() as cursor:
-            cursor.execute(f"SELECT * FROM users WHERE tg_id = \
-                           {update.effective_chat.id} && login_now = 1")
-            rows = cursor.fetchall()
+        cursor.execute(("SELECT * FROM users WHERE tg_id = "
+                        f"{update.effective_chat.id} && login_now = 1"))
 
-            if (len(rows) >= 1):
-                cursor.execute(f"UPDATE users SET login_now = 0 WHERE tg_id = \
-                               {update.effective_chat.id}")
+        if (cursor.fetchone()):
+            cursor.execute(("UPDATE users SET login_now = 0 WHERE tg_id = "
+                            f"{update.effective_chat.id}"))
 
-                await context.bot.sendMessage(
-                    chat_id=update.effective_chat.id,
-                    text=(
-                        "*✅ Вы успешно разлогинились!*\nЧтобы войти снова, "
-                        "введите комманду /login _ВашПароль_."),
-                    reply_markup=ReplyKeyboardRemove(True),
-                    parse_mode="Markdown",
-                    )
+            await context.bot.sendMessage(
+                chat_id=update.effective_chat.id,
+                text=("*✅ Вы успешно разлогинились!*\nЧтобы войти снова, "
+                      "введите комманду /login _ВашПароль_."),
+                reply_markup=ReplyKeyboardRemove(True),
+                parse_mode="Markdown",
+                )
 
-            else:
-                await context.bot.sendMessage(
-                    chat_id=update.effective_chat.id,
-                    text=("*✅ Нужно авторизоваться!*\nВведите комманду /login "
-                          "_ВашПароль_.\nЕсли Вы забыли пароль, обратитесь за "
-                          f"помощью к {tg_support}!"),
-                    parse_mode="Markdown",
-                    )
+        else:
+            await context.bot.sendMessage(
+                chat_id=update.effective_chat.id,
+                text=("*✅ Нужно авторизоваться!*\nВведите комманду /login "
+                      "_ВашПароль_.\nЕсли Вы забыли пароль, обратитесь за "
+                      f"помощью к {tg_support}!"),
+                parse_mode="Markdown",
+                )
+
     except pymysql.Error as e:
         await DBError(update, context, e)
 
@@ -516,26 +524,49 @@ async def logout(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def checkLogin(update: Update,
                      context: ContextTypes.DEFAULT_TYPE) -> bool:
     try:
-        with connection.cursor() as cursor:
-            cursor.execute(f"SELECT * FROM users WHERE tg_id = \
-                           {update.effective_chat.id}")
-            rows = cursor.fetchall()
+        cursor.execute(("SELECT * FROM users WHERE tg_id = "
+                        f"{update.effective_chat.id}"))
+        user = cursor.fetchone()
 
-            if (len(rows) >= 1 and rows[0]['login_now'] == 1):
-                return True
-            else:
-                if (await createUser(update, context)):
-                    await context.bot.sendMessage(
-                        chat_id=update.effective_chat.id,
-                        text=("*✅ Нужно авторизоваться!*\nВведите комманду "
-                              "/login _ВашПароль_.\nЕсли Вы забыли пароль, "
-                              f"обратитесь за помощью к {tg_support}!"),
-                        reply_markup=ReplyKeyboardRemove(True),
-                        parse_mode="Markdown",
-                        )
-                    return False
+        if (user and user['login_now'] == 1):
+            return True
+        else:
+            if (await createUser(update, context)):
+                await context.bot.sendMessage(
+                    chat_id=update.effective_chat.id,
+                    text=("*✅ Нужно авторизоваться!*\nВведите комманду "
+                          "/login _ВашПароль_.\nЕсли Вы забыли пароль, "
+                          f"обратитесь за помощью к {tg_support}!"),
+                    reply_markup=ReplyKeyboardRemove(True),
+                    parse_mode="Markdown",
+                    )
+                return False
 
         return False
+
+    except pymysql.Error as e:
+        await DBError(update, context, e)
+        return False
+
+
+async def checkRole(update: Update,
+                    context: ContextTypes.DEFAULT_TYPE, roles) -> bool:
+    try:
+        cursor.execute(("SELECT type FROM users WHERE tg_id = "
+                        f"{update.effective_chat.id}"))
+        role = cursor.fetchone()
+
+        if (role['type'] in roles):
+            return True
+        else:
+            await context.bot.sendMessage(
+                chat_id=update.effective_chat.id,
+                text=("❌ Вам недоступно выполнение данной операции!\n"
+                      f"Вы можете запросить доступ у {tg_support}."),
+                parse_mode="Markdown",
+                )
+            return False
+
     except pymysql.Error as e:
         await DBError(update, context, e)
         return False
@@ -544,45 +575,45 @@ async def checkLogin(update: Update,
 async def createUser(update: Update,
                      context: ContextTypes.DEFAULT_TYPE) -> bool:
     try:
-        with connection.cursor() as cursor:
-            cursor.execute(f"SELECT * FROM users WHERE tg_id = \
-                           {update.effective_chat.id}")
-            rows = cursor.fetchall()
+        cursor.execute(("SELECT * FROM users WHERE tg_id = "
+                        f"{update.effective_chat.id}"))
 
-            if (len(rows) >= 1):
-                return True
+        if (cursor.fetchone()):
+            return True
+        else:
+            if (update.effective_chat.first_name):
+                username = update.effective_chat.first_name
             else:
-                if (update.effective_chat.first_name):
-                    username = update.effective_chat.first_name
-                else:
-                    username = "UserName"
+                username = "UserName"
 
-                password = ''
-                for i in range(8):
-                    password += ''.join(secrets.choice(
-                        string.ascii_letters + string.digits +
-                        string.punctuation))
+            password = ''
+            for i in range(8):
+                password += ''.join(secrets.choice(
+                    string.ascii_letters + string.digits +
+                    string.punctuation))
 
-                cursor.execute("INSERT INTO users (`tg_id`, `username`, \
-                               `password`, `type`, `create_timestamp`) \
-                               VALUES (%s, %s, %s, %s, %s)", (
-                                   update.effective_chat.id, str(username),
-                                   str(password), "user",
-                                   str(time.time()).split('.')[0]))
+            cursor.execute(("INSERT INTO users (tg_id, username, "
+                            "password, type, create_timestamp) "
+                            "VALUES (%s, %s, %s, %s, %s)", (
+                                update.effective_chat.id,
+                                str(username), str(password), "user",
+                                str(time.time()).split('.')[0])))
 
-                text = ("*✅ Вы успешно зарегистрированы!*\n\n🔑 Ваш пароль: `"
-                        f"{escape_markdown(password, 2)}"
-                        "`\nЧтобы авторизоваться, введите комманду /login "
-                        "_ВашПароль_.\n\n*❗️ В целях безопасности, "
-                        "рекомендуем запомнить Ваш пароль и удалить данное "
-                        "сообщение!*")
-                await context.bot.sendMessage(
-                    chat_id=update.effective_chat.id,
-                    text=text,
-                    parse_mode="MarkdownV2",
-                    )
+            text = ("*✅ Вы успешно зарегистрированы!*\n\n🔑 Ваш пароль: `"
+                    f"{escape_markdown(password, 2)}"
+                    "`\nЧтобы авторизоваться, введите комманду /login "
+                    "_ВашПароль_.\n\n*❗️ В целях безопасности, "
+                    "рекомендуем запомнить Ваш пароль и удалить данное "
+                    "сообщение!*")
 
-                return False
+            await context.bot.sendMessage(
+                chat_id=update.effective_chat.id,
+                text=text,
+                parse_mode="MarkdownV2",
+                )
+
+            return False
+
     except pymysql.Error as e:
         await DBError(update, context, e)
         return False
@@ -609,83 +640,89 @@ async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
                 "Если Вы забыли пароль, обратитесь за помощью к "
                 f"{tg_support}!"),
-            reply_markup=ReplyKeyboardRemove(True),
             parse_mode="Markdown",
             )
 
 
 async def admins(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if (await checkLogin(update, context)):
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT * FROM users WHERE type IN (%s, %s)",
-                           ("mainadmin", "admin"))
-            rows = cursor.fetchall()
+        if (await checkRole(update, context, roles=["mainadmin", "admin"])):
+            try:
+                cursor.execute("SELECT * FROM users WHERE type IN "
+                               "('mainadmin', 'admin')")
+                admins = cursor.fetchall()
 
-            if (len(rows) >= 1):
-                await context.bot.sendMessage(
-                    chat_id=update.effective_chat.id,
-                    text="*👑 Админы!*\n\n",
-                    parse_mode="Markdown",
-                    )
-
-                for row in rows:
-                    if (row['type'] == 'mainadmin'):
-                        type = "Главный админ"
-                    elif (row['type'] == 'admin'):
-                        type = "Админ"
-
-                    if (row['locked'] == 1):
-                        locked = "🟢"
-                    else:
-                        locked = "🔴"
-
-                    if (row['baned'] == 1):
-                        baned = "🟢"
-                    else:
-                        baned = "🔴"
-
-                    if (row['create_timestamp'] == 0):
-                        create_ts = "Никогда"
-                    else:
-                        create_ts = datetime.fromtimestamp(
-                            row['create_timestamp']).strftime(
-                                "%d/%m/%Y, %H:%M:%S")
-
-                    if (row['auth_timestamp'] == 0):
-                        auth_ts = "Никогда"
-                    else:
-                        auth_ts = datetime.fromtimestamp(
-                            row['auth_timestamp']).strftime(
-                                "%d/%m/%Y, %H:%M:%S")
-
+                if (len(admins) >= 1):
                     await context.bot.sendMessage(
                         chat_id=update.effective_chat.id,
-                        text=(f"👤\nID: <b>{str(row['id'])}</b>\n"
-                              f"Telegram ID: <b>{str(row['tg_id'])}</b>\n"
-                              f"Имя: <b>{str(row['username'])}</b>\n"
-                              f"Роль: <b>{str(type)}</b>\n"
-                              f"Заблокирован: <b>{str(locked)}</b>\n"
-                              f"Забанен: <b>{str(baned)}</b>\n"
-                              f"Зарегистрирован: <b>{str(create_ts)}</b>\n"
-                              f"Последний вход: <b>{str(auth_ts)}</b>"
-                              ), parse_mode="HTML",
+                        text="*👑 Админы!*\n\n",
+                        parse_mode="Markdown",
                         )
-            else:
-                await context.bot.sendMessage(
-                    chat_id=update.effective_chat.id,
-                    text=("*👑 Админы!*\n\n"
-                          " ❌ Администраторов не найдено!"),
-                    parse_mode="Markdown",
-                    )
+
+                    for admin in admins:
+                        if (admin['type'] == 'mainadmin'):
+                            type = "Главный админ"
+                        elif (admin['type'] == 'admin'):
+                            type = "Админ"
+
+                        if (admin['locked'] == 1):
+                            locked = "🟢"
+                        else:
+                            locked = "🔴"
+
+                        if (admin['baned'] == 1):
+                            baned = "🟢"
+                        else:
+                            baned = "🔴"
+
+                        if (admin['create_timestamp'] == 0):
+                            create_ts = "Никогда"
+                        else:
+                            create_ts = datetime.fromtimestamp(
+                                admin['create_timestamp']).strftime(
+                                    "%d/%m/%Y, %H:%M:%S")
+
+                        if (admin['auth_timestamp'] == 0):
+                            auth_ts = "Никогда"
+                        else:
+                            auth_ts = datetime.fromtimestamp(
+                                admin['auth_timestamp']).strftime(
+                                    "%d/%m/%Y, %H:%M:%S")
+
+                        tg_id = str(admin['tg_id'])
+
+                        await context.bot.sendMessage(
+                            chat_id=update.effective_chat.id,
+                            text=(f"👤\nID: <b>{str(admin['id'])}</b>\n"
+                                  f"Telegram ID: <b>{tg_id}</b>\n"
+                                  f"Имя: <b>{str(admin['username'])}</b>\n"
+                                  f"Роль: <b>{str(type)}</b>\n"
+                                  f"Заблокирован: <b>{str(locked)}</b>\n"
+                                  f"Забанен: <b>{str(baned)}</b>\n"
+                                  f"Зарегистрирован: <b>{str(create_ts)}</b>\n"
+                                  f"Последний вход: <b>{str(auth_ts)}</b>"
+                                  ), parse_mode="HTML",
+                            )
+                else:
+                    await context.bot.sendMessage(
+                        chat_id=update.effective_chat.id,
+                        text=("*👑 Админы!*\n\n"
+                              " ❌ Администраторов не найдено!"),
+                        parse_mode="Markdown",
+                        )
+
+            except pymysql.Error as e:
+                await DBError(update, context, e)
+                return False
 
 
 def main():
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("help", help))
-    application.add_handler(CommandHandler("edituser", editUser))
-    application.add_handler(CommandHandler("admins", admins))
-    application.add_handler(CommandHandler("login", login))
-    application.add_handler(CommandHandler("logout", logout))
+    bot.add_handler(CommandHandler("start", start))
+    bot.add_handler(CommandHandler("help", help))
+    bot.add_handler(CommandHandler("edituser", editUser))
+    bot.add_handler(CommandHandler("admins", admins))
+    bot.add_handler(CommandHandler("login", login))
+    bot.add_handler(CommandHandler("logout", logout))
 
     mh = [
         ("⬅️ Главное меню", mainMenu),
@@ -709,11 +746,11 @@ def main():
     ]
 
     for button, func in mh:
-        application.add_handler(MessageHandler(
+        bot.add_handler(MessageHandler(
             filters.Regex("^(" + button + ")$"), func))
 
     keep_alive()
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    bot.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
 if __name__ == "__main__":

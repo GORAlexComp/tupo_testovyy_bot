@@ -1,15 +1,22 @@
 from threading import Thread
 
-from flask import Flask
+from flask import Flask, render_template
 
 app = Flask('')
 
 
 @app.route('/')
 def home():
-    return 'We are not able to provide any information about your word. \
-        Please confirm that the word is spelled correctly or try the \
-        search again at a later time.'
+    project_name = "Tupo Tesovyy Bot"
+    variables = "[\"BOT\", \"БОТ\"]"
+    developer = "GORAlex Comp"
+    github = "https://github.com/GORAlexComp/tupo_testovyy_bot"
+
+    return render_template('index.html',
+                           project_name=project_name,
+                           variables=variables,
+                           developer=developer,
+                           github=github)
 
 
 def run():
