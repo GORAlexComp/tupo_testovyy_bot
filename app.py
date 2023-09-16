@@ -26,8 +26,7 @@ logger = logging.getLogger(__name__)
 
 bot = Application.builder().token(str(os.getenv('BOT_TOKEN'))).build()
 
-timeout = 10
-connection = pymysql.connect(
+db = pymysql.connect(
     db=os.getenv('DB_BASE'),
     host=os.getenv('DB_HOST'),
     port=int(os.getenv('DB_PORT')),
@@ -37,7 +36,7 @@ connection = pymysql.connect(
     charset="utf8mb4",
     autocommit=True
 )
-cursor = connection.cursor()
+cursor = db.cursor()
 
 main_menu = ReplyKeyboardMarkup(
     [[
@@ -78,6 +77,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             cursor.execute(("SELECT * FROM users WHERE tg_id = "
                             f"{update.effective_chat.id}"))
             user = cursor.fetchone()
+            db.commit()
 
             if (user['username'] != ''):
                 username = escape_markdown(user['username'])
@@ -228,6 +228,7 @@ async def allOffers(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             cursor.execute("SELECT * FROM offers")
             offers = cursor.fetchall()
+            db.commit()
 
             if (len(offers) >= 1):
                 for offer in offers:
@@ -305,6 +306,7 @@ async def allUsers(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "SELECT * FROM users WHERE type NOT IN "
                 "('mainadmin', 'admin')"))
             users = cursor.fetchall()
+            db.commit()
 
             if (len(users) >= 1):
                 for user in users:
@@ -396,6 +398,8 @@ async def editUserStore(update: Update,
             cursor.execute(("SELECT * FROM users WHERE tg_id = "
                             f"{update.effective_chat.id}"))
             rows = cursor.fetchone()
+            db.commit()
+
             data = [rows['username'], rows['type']]
 
             sql = ((f"UPDATE users SET {commandText[1]} = "
@@ -403,6 +407,7 @@ async def editUserStore(update: Update,
                     f"{update.effective_chat.id}"))
 
             cursor.execute(sql)
+            db.commit()
 
             if (commandText[1] == "username"):
                 text = ("✅ Вы успешно изменили *имя* с *"
@@ -430,6 +435,7 @@ async def login(update: Update, context: ContextTypes.DEFAULT_TYPE):
         cursor.execute(("SELECT * FROM users WHERE tg_id = "
                         f"{update.effective_chat.id}"))
         user = cursor.fetchone()
+        db.commit()
 
         if (user['login_now'] == 1):
             await context.bot.sendMessage(
@@ -447,6 +453,7 @@ async def login(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                         "1, auth_timestamp = "
                                         f"{time.time()} WHERE tg_id = "
                                         f"{update.effective_chat.id}"))
+                        db.commit()
 
                         await context.bot.deleteMessage(
                             chat_id=update.effective_chat.id,
@@ -495,10 +502,12 @@ async def logout(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         cursor.execute(("SELECT * FROM users WHERE tg_id = "
                         f"{update.effective_chat.id} && login_now = 1"))
+        db.commit()
 
         if (cursor.fetchone()):
             cursor.execute(("UPDATE users SET login_now = 0 WHERE tg_id = "
                             f"{update.effective_chat.id}"))
+            db.commit()
 
             await context.bot.sendMessage(
                 chat_id=update.effective_chat.id,
@@ -527,6 +536,7 @@ async def checkLogin(update: Update,
         cursor.execute(("SELECT * FROM users WHERE tg_id = "
                         f"{update.effective_chat.id}"))
         user = cursor.fetchone()
+        db.commit()
 
         if (user and user['login_now'] == 1):
             return True
@@ -555,6 +565,7 @@ async def checkRole(update: Update,
         cursor.execute(("SELECT type FROM users WHERE tg_id = "
                         f"{update.effective_chat.id}"))
         role = cursor.fetchone()
+        db.commit()
 
         if (role['type'] in roles):
             return True
@@ -577,6 +588,7 @@ async def createUser(update: Update,
     try:
         cursor.execute(("SELECT * FROM users WHERE tg_id = "
                         f"{update.effective_chat.id}"))
+        db.commit()
 
         if (cursor.fetchone()):
             return True
@@ -598,6 +610,7 @@ async def createUser(update: Update,
                                 update.effective_chat.id,
                                 str(username), str(password), "user",
                                 str(time.time()).split('.')[0])))
+            db.commit()
 
             text = ("*✅ Вы успешно зарегистрированы!*\n\n🔑 Ваш пароль: `"
                     f"{escape_markdown(password, 2)}"
@@ -651,6 +664,7 @@ async def admins(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 cursor.execute("SELECT * FROM users WHERE type IN "
                                "('mainadmin', 'admin')")
                 admins = cursor.fetchall()
+                db.commit()
 
                 if (len(admins) >= 1):
                     await context.bot.sendMessage(
