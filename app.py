@@ -5,8 +5,7 @@ import string
 import time
 from datetime import datetime
 
-from pymysql import connect
-from pymysql.cursors import DictCursor
+import pymysql
 from dotenv import load_dotenv
 from telegram import (KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove,
                       Update)
@@ -33,7 +32,7 @@ db = pymysql.connect(
     port=int(os.getenv('DB_PORT')),
     user=os.getenv('DB_USER'),
     password=os.getenv('DB_PASSWORD'),
-    cursorclass=DictCursor,
+    cursorclass=pymysql.cursors.DictCursor,
     charset="utf8mb4",
     autocommit=True
 )
