@@ -8,7 +8,7 @@
 		<img src="https://img.shields.io/github/stars/GORAlexComp/tupo_testovyy_bot.svg?style=flat-square&color=yellow" alt="У вибраному">
 		<img src="https://img.shields.io/github/forks/GORAlexComp/tupo_testovyy_bot.svg?style=flat-square&color=purple" alt="Форків">
 		<img src="https://img.shields.io/github/issues/GORAlexComp/tupo_testovyy_bot.svg?style=flat-square" alt="Звернень">
-		<img src="https://img.shields.io/badge/build-3.10-brightgreen?style=flat-square&logo=Python&label=Python%20&color=orange" alt="Поточна версія Python">
+		<img src="https://img.shields.io/badge/build-3.11.5-brightgreen?style=flat-square&logo=Python&label=Python%20&color=orange" alt="Поточна версія Python">
 		<img src="https://img.shields.io/github/repo-size/GORAlexComp/tupo_testovyy_bot.svg?style=flat-square&logo=Databricks&color=9cf" alt="Вага репозиторію">
 	</h1>
 	<h2 align="center">Телеграм-бот для показа возможностей</h2>
