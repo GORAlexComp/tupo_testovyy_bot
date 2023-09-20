@@ -15,6 +15,8 @@
 	<h2 align="center">Телеграм-бот для показа возможностей</h2>
 </p>
 
+### Версии 📦
+
 <h3>🏷 Версия 1.7 <span style="color:green"> 🟢 (текущая)</span></h3>
 
 - 🧾 Список изменений: https://github.com/GORAlexComp/tupo_testovyy_bot/commits/v1.7
@@ -32,6 +34,16 @@
 
 <hr/>
 
+### Вкладчики 💰
+
 <p align="center">
-		<img src="https://repobeats.axiom.co/api/embed/b8584893e41a8b411194120dffcd73f28ad6326b.svg" alt="Repobeats analytics image">
+	<img src="https://opencollective.com/gac/contributors.svg?width=890&button=false" alt="Contributors">
+</p>
+
+<hr/>
+
+### Статистика 📊
+
+<p align="center">
+	<img src="https://repobeats.axiom.co/api/embed/b8584893e41a8b411194120dffcd73f28ad6326b.svg" alt="Repobeats analytics image">
 </p>
